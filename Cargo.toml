@@ -1,0 +1,19 @@
+[package]
+name = "labs_syndham_sfr"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.54.1", features = ["full"] }
+eframe = "0.37.0"
+egui_material_icons = { version = "0.9.0", features = ["outline"] }
+
+[workspace]
+members = [
+    "crates/hades"
+]
+resolver = "2"
+
+[workspace.dependencies]
+crossbeam-channel = "0.5.17"
+thiserror = "2.0.21"

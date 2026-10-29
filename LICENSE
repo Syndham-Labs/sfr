@@ -1,0 +1,26 @@
+Syndham Labs Source-Available Non-Redistribution License (SL-SNRL)
+    Version 1.0, 28 October 2026.
+
+Copyright (c) 2026 Syndham Labs [Muhammad Yafi]
+
+1. GRANT OF ACCESS
+Syndham Labs grants you access to view, inspect, and read the source code of
+this software ("Sound Frequency Rectification") for personal, educational, and evaluation
+purposes only.
+
+2. RESTRICTIONS
+You are strictly prohibited from:
+- Redistributing, publishing, sublicensing, or offering copies of this software
+  (in source code or binary form) to third parties.
+- Hosting public mirrors, bundling, or incorporating this software into other
+  downloadable packages or repositories.
+- Using this software for commercial purposes or as part of a hosted service
+  offered to third parties without prior written consent from Syndham Labs.
+
+3. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+SYNDHAM LABS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

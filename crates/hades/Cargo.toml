@@ -1,0 +1,14 @@
+[package]
+name = "hades"
+version = "0.1.0"
+edition = "2024"
+workspace = "../.."
+
+[dependencies]
+rtrb = "0.4.1"
+wasapi = "0.26.0"
+log = "0.4.34"
+bytemuck = "1.25.2"
+
+thiserror = { workspace = true }
+crossbeam-channel = { workspace = true }
