@@ -40,4 +40,20 @@ impl HadesAudioDeviceUtils {
 
         Err(HadesError::DeviceNotFoundByFriendlyName(substring))
     }
+
+    pub fn get_device_sample_rate(device: &HadesAudioDevice) -> Result<usize, HadesError> {
+        Ok(device
+            .to_wasapi_device()?
+            .get_iaudioclient()?
+            .get_mixformat()?
+            .get_samplespersec() as usize)
+    }
+
+    pub fn get_device_nchannels(device: &HadesAudioDevice) -> Result<usize, HadesError> {
+        Ok(device
+            .to_wasapi_device()?
+            .get_iaudioclient()?
+            .get_mixformat()?
+            .get_nchannels() as usize)
+    }
 }

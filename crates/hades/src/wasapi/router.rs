@@ -3,7 +3,7 @@ use std::sync::{Arc, atomic::AtomicBool};
 use rtrb::RingBuffer;
 use wasapi::{AudioCaptureClient, AudioClient, AudioRenderClient, StreamMode};
 
-use crate::{device::HadesAudioDevice, error::HadesError};
+use crate::{audio::subformat::AudioSubformat, device::HadesAudioDevice, error::HadesError};
 
 pub struct HadesAudioRouterBridge {
     pub capture_device: HadesAudioDevice,
@@ -58,6 +58,10 @@ impl HadesAudioRouterBridge {
         (block_align, max_bytes, vec![0u8; max_bytes])
     }
 
+    pub fn init_float_scratch_buffer(&self, buffer_size: usize, n_channels: usize) -> Vec<f32> {
+        vec![0.0f32; buffer_size * n_channels]
+    }
+
     pub fn init_loopback_capture(&mut self) -> Result<(), HadesError> {
         let mut capture_client = self.capture_device.to_wasapi_device()?.get_iaudioclient()?;
         let mut render_client = self.render_device.to_wasapi_device()?.get_iaudioclient()?;
@@ -110,12 +114,20 @@ impl HadesAudioRouterBridge {
         Ok(())
     }
 
+    pub fn capture_channels(&self) -> Result<usize, HadesError> {
+        let client = self
+            ._capture_audio_client
+            .as_ref()
+            .ok_or(HadesError::LoopbackBridgeCaptureAudioClientNotInitialized)?;
+        Ok(client.get_mixformat()?.get_nchannels() as usize)
+    }
+
     pub fn bridge_loop(
         &mut self,
-        mut callback: impl FnMut(&[u8], &mut [u8]),
+        mut callback: impl FnMut(&mut [f32], usize, usize),
         running: Arc<AtomicBool>,
     ) -> Result<(), HadesError> {
-        let (buffer_size, n_channels, bits_per_sample) = {
+        let (buffer_size, n_channels, bits_per_sample, capture_wfm) = {
             let client = self
                 ._capture_audio_client
                 .as_ref()
@@ -127,19 +139,17 @@ impl HadesAudioRouterBridge {
                 client.get_buffer_size()? as usize,
                 wfm.get_nchannels() as usize,
                 wfm.get_bitspersample() as usize,
+                wfm,
             )
         };
 
         let (block_align, max_bytes, mut capture_scratch_buffer) =
             self.init_scratch_buffer(buffer_size, n_channels, bits_per_sample);
-
-        let (_, _, mut dsp_scratch_buffer) =
-            self.init_scratch_buffer(buffer_size, n_channels, bits_per_sample);
-        let (_, _, mut dsp_scratch_output) =
-            self.init_scratch_buffer(buffer_size, n_channels, bits_per_sample);
-
         let (_, _, mut render_scratch_buffer) =
             self.init_scratch_buffer(buffer_size, n_channels, bits_per_sample);
+
+        let mut dsp_scratch_input = self.init_float_scratch_buffer(buffer_size, n_channels);
+        let mut dsp_scratch_output = self.init_float_scratch_buffer(buffer_size, n_channels);
 
         let (mut capture_producer, mut capture_consumer) = RingBuffer::new(max_bytes);
         let (mut render_producer, mut render_consumer) = RingBuffer::new(max_bytes);
@@ -158,6 +168,9 @@ impl HadesAudioRouterBridge {
             .as_ref()
             .ok_or(HadesError::LoopbackBridgeRenderAudioRenderClientNotInitialized)?;
 
+        let capture_subformat = AudioSubformat::from_wave_format(&capture_wfm)?;
+        let render_subformat = AudioSubformat::from_wave_format(&rend_client.get_mixformat()?)?;
+
         while running.load(std::sync::atomic::Ordering::Acquire) {
             if let Some(packet_frames) = capture.get_next_packet_size()? {
                 let packet_bytes = packet_frames as usize * block_align;
@@ -168,13 +181,26 @@ impl HadesAudioRouterBridge {
             }
 
             let (input_slice, _remainder) =
-                capture_consumer.pop_partial_slice(&mut dsp_scratch_buffer);
+                capture_consumer.pop_partial_slice(&mut capture_scratch_buffer);
 
             if !input_slice.is_empty() {
                 let n_bytes = input_slice.len();
-                let output_slice = &mut dsp_scratch_output[..n_bytes];
+                let num_samples = (n_bytes / block_align) * n_channels;
 
-                callback(input_slice, output_slice);
+                capture_subformat.decode_to_f32(input_slice, &mut dsp_scratch_input[..num_samples]);
+
+                let input_floats = &dsp_scratch_input[..num_samples];
+                let output_floats = &mut dsp_scratch_output[..num_samples];
+                output_floats.copy_from_slice(input_floats);
+
+                callback(
+                    output_floats,
+                    capture_wfm.get_samplespersec() as usize,
+                    n_channels,
+                );
+
+                let output_slice = &mut render_scratch_buffer[..n_bytes];
+                render_subformat.encode_from_f32(output_floats, output_slice);
 
                 let _ = render_producer.push_partial_slice(output_slice);
             }

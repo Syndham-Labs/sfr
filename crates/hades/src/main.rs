@@ -1,13 +1,19 @@
-use std::{
-    cmp::min,
-    io::stdin,
-    sync::{Arc, atomic::AtomicBool},
-    thread::spawn,
-};
+use std::io::stdin;
 
 use hades::{
+    audio::{
+        dsp::HadesAudioDigitalSignalProcessingPipeline,
+        engine::HadesEngine,
+        filter::{
+            AudioFilter::ParametricEqualizer,
+            parametric::{
+                ParametricEqualizationFilter,
+                biquad::{BiquadMode, BiquadPan, BiquadType},
+            },
+        },
+    },
     error::HadesError,
-    wasapi::{router::HadesAudioRouterBridge, utils::HadesAudioDeviceUtils},
+    wasapi::utils::HadesAudioDeviceUtils,
 };
 use wasapi::initialize_mta;
 
@@ -32,32 +38,41 @@ fn loopback_test() -> Result<(), HadesError> {
         render_device.get_desc()
     );
 
-    let running = Arc::new(AtomicBool::new(true));
-    let worker_running = Arc::clone(&running);
+    let cap_sr = HadesAudioDeviceUtils::get_device_sample_rate(&capture_device)?;
+    let cap_nchannels = HadesAudioDeviceUtils::get_device_nchannels(&capture_device)?;
 
-    let handle = spawn(move || {
-        let result: Result<(), HadesError> = (|| {
-            let mut bridge = HadesAudioRouterBridge::new(capture_device, render_device)?;
+    let mut engine = HadesEngine::new(
+        capture_device,
+        render_device,
+        HadesAudioDigitalSignalProcessingPipeline::new(None, cap_sr, cap_nchannels),
+    );
 
-            bridge.init_loopback_capture()?;
+    engine.start_router()?;
+    engine.commit_filter_changes()?;
 
-            bridge.bridge_loop(
-                |input, output| {
-                    let len = min(input.len(), output.len());
-                    output[..len].copy_from_slice(&input[..len]);
-                },
-                worker_running,
-            )?;
-
-            Ok(())
-        })();
-
-        if let Err(e) = result {
-            eprintln!("Loopback Worker Thread failed: {}", e);
+    engine
+        .dsp
+        .add_filter(ParametricEqualizer(ParametricEqualizationFilter::new(
+            244,
+            None,
+            cap_nchannels,
+            true,
+        )));
+    engine.dsp.update_filter(244, |f, sr| match f {
+        ParametricEqualizer(pef) => {
+            pef.new_raw_biquad_filter(
+                3.5,
+                35,
+                0.5,
+                BiquadType::FlatTopBell,
+                BiquadPan::Centre,
+                BiquadMode::TransposedDirectFormII,
+                sr,
+                true,
+            );
         }
     });
-
-    println!("Loopback bridge running on capture device");
+    engine.commit_filter_changes()?;
 
     let mut input = String::new();
 
@@ -65,8 +80,7 @@ fn loopback_test() -> Result<(), HadesError> {
 
     println!("Input received, stopping bridge...");
 
-    running.store(false, std::sync::atomic::Ordering::SeqCst);
-    let _ = handle.join();
+    engine.stop_router();
 
     Ok(())
 }

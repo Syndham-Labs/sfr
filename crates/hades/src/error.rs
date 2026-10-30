@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::{fmt::Debug, io::Error};
 
 use rtrb::chunks::ChunkError;
 use thiserror::Error;
@@ -14,6 +14,9 @@ pub enum HadesError {
 
     #[error("Ring Buffer Chunk Error: {0}")]
     RingBufferChunkError(#[from] ChunkError),
+
+    #[error("Crossbeam Channel Send Error: {0}")]
+    CrossbeamChannelSendError(String),
 
     #[error("Audio device not found by ID: {0}")]
     DeviceNotFoundByID(String),
@@ -38,4 +41,10 @@ pub enum HadesError {
 
     #[error("Loopback Bridge Render Ring Buffer was not initialized")]
     LoopbackBridgeRenderRingBufferNotInitialized,
+
+    #[error("Unsupported bit format for passed wave format bits: {0}")]
+    UnsupportedWaveFormatBitFormat(String),
+
+    #[error("Hades AudioDSP Command Channel was not initialized")]
+    AudioDSPCommandChannelNotInitialized,
 }
