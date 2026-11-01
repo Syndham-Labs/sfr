@@ -1,9 +1,11 @@
+use std::fmt::{Display, write};
+
 use bytemuck::{cast_slice, pod_align_to};
 use wasapi::{SampleType, WaveFormat};
 
 use crate::error::HadesError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AudioSubformat {
     F32,
     I16,
@@ -86,6 +88,16 @@ impl AudioSubformat {
                     raw_bytes[byte_start..byte_start + 4].copy_from_slice(&sample.to_le_bytes());
                 }
             }
+        }
+    }
+}
+
+impl Display for AudioSubformat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AudioSubformat::F32 => write!(f, "32-bit floating point"),
+            AudioSubformat::I16 => write!(f, "16-bit integer"),
+            AudioSubformat::I32 => write!(f, "32-bit integer"),
         }
     }
 }

@@ -23,9 +23,8 @@ fn loopback_test() -> Result<(), HadesError> {
     let capture_device = HadesAudioDeviceUtils::find_capture_device_by_partial_friendlyname(
         "CABLE Output".to_string(),
     )?;
-    let render_device = HadesAudioDeviceUtils::find_render_device_by_partial_friendlyname(
-        "Bluebass Elite Hybrid".to_string(),
-    )?;
+    let render_device =
+        HadesAudioDeviceUtils::find_render_device_by_partial_friendlyname("Speakers".to_string())?;
 
     println!(
         "Found Capture Device: {} - {}",
@@ -61,9 +60,9 @@ fn loopback_test() -> Result<(), HadesError> {
     engine.dsp.update_filter(244, |f, sr| match f {
         ParametricEqualizer(pef) => {
             pef.new_raw_biquad_filter(
-                3.5,
-                35,
-                0.5,
+                4.5,
+                30,
+                0.4,
                 BiquadType::FlatTopBell,
                 BiquadPan::Centre,
                 BiquadMode::TransposedDirectFormII,

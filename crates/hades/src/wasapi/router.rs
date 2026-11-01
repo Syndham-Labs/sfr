@@ -3,7 +3,10 @@ use std::sync::{Arc, atomic::AtomicBool};
 use rtrb::RingBuffer;
 use wasapi::{AudioCaptureClient, AudioClient, AudioRenderClient, StreamMode};
 
-use crate::{audio::subformat::AudioSubformat, device::HadesAudioDevice, error::HadesError};
+use crate::{
+    audio::subformat::AudioSubformat, device::HadesAudioDevice, error::HadesError, log_info,
+    log_warn,
+};
 
 pub struct HadesAudioRouterBridge {
     pub capture_device: HadesAudioDevice,
@@ -170,6 +173,14 @@ impl HadesAudioRouterBridge {
 
         let capture_subformat = AudioSubformat::from_wave_format(&capture_wfm)?;
         let render_subformat = AudioSubformat::from_wave_format(&rend_client.get_mixformat()?)?;
+
+        if capture_subformat != render_subformat {
+            log_warn!(
+                "Capture Device Subformat ({}) does not match Render Device Subformat ({}). Ignoring...",
+                capture_subformat,
+                render_subformat
+            );
+        }
 
         while running.load(std::sync::atomic::Ordering::Acquire) {
             if let Some(packet_frames) = capture.get_next_packet_size()? {
