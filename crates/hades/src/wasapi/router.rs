@@ -1,7 +1,7 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
 use rtrb::RingBuffer;
-use wasapi::{AudioCaptureClient, AudioClient, AudioRenderClient, StreamMode};
+use wasapi::{AudioCaptureClient, AudioClient, AudioRenderClient, Direction, StreamMode};
 
 use crate::{
     audio::subformat::AudioSubformat, device::HadesAudioDevice, error::HadesError, log_info,
@@ -24,6 +24,16 @@ impl HadesAudioRouterBridge {
         capture_device: HadesAudioDevice,
         render_device: HadesAudioDevice,
     ) -> Result<Self, HadesError> {
+        if capture_device.get_direction() == Direction::Render {
+            log_info!(
+                "Capture device passed is a Render Endpoint, router will request that capture device is initialized in loopback mode"
+            );
+        } else {
+            log_info!(
+                "Capture device passed is a Capture Endpoint, audio may not be routed to the set Render device (unless Windows externally handles it)"
+            );
+        }
+
         Ok(Self {
             capture_device,
             render_device,
