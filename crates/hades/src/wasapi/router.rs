@@ -186,7 +186,7 @@ impl HadesAudioRouterBridge {
 
         if capture_subformat != render_subformat {
             log_warn!(
-                "Capture Device Subformat ({}) does not match Render Device Subformat ({}). Ignoring...",
+                "Capture Device Subformat ({}) does not match Render Device Subformat ({}). Windows may invoke auto-conversions, ignoring...",
                 capture_subformat,
                 render_subformat
             );
