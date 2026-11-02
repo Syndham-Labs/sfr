@@ -131,7 +131,7 @@ impl HadesAudioRouterBridge {
         let client = self
             ._capture_audio_client
             .as_ref()
-            .ok_or(HadesError::LoopbackBridgeCaptureAudioClientNotInitialized)?;
+            .ok_or(HadesError::AudoRouterBridgeCaptureAudioClientNotInitialized)?;
         Ok(client.get_mixformat()?.get_nchannels() as usize)
     }
 
@@ -144,7 +144,7 @@ impl HadesAudioRouterBridge {
             let client = self
                 ._capture_audio_client
                 .as_ref()
-                .ok_or(HadesError::LoopbackBridgeCaptureAudioClientNotInitialized)?;
+                .ok_or(HadesError::AudoRouterBridgeCaptureAudioClientNotInitialized)?;
 
             let wfm = client.get_mixformat()?;
 
@@ -170,16 +170,16 @@ impl HadesAudioRouterBridge {
         let capture = self
             ._capture_audio_cap
             .as_ref()
-            .ok_or(HadesError::LoopbackBridgeCaptureAudioCaptureClientNotInitialized)?;
+            .ok_or(HadesError::AudioRouterBridgeCaptureAudioCaptureClientNotInitialized)?;
 
         let rend_client = self
             ._render_audio_client
             .as_ref()
-            .ok_or(HadesError::LoopbackBridgeRenderAudioClientNotInitialized)?;
+            .ok_or(HadesError::AudioRouterBridgeRenderAudioClientNotInitialized)?;
         let render = self
             ._render_audio_rend
             .as_ref()
-            .ok_or(HadesError::LoopbackBridgeRenderAudioRenderClientNotInitialized)?;
+            .ok_or(HadesError::AudioRouterBridgeRenderAudioRenderClientNotInitialized)?;
 
         let capture_subformat = AudioSubformat::from_wave_format(&capture_wfm)?;
         let render_subformat = AudioSubformat::from_wave_format(&rend_client.get_mixformat()?)?;
@@ -243,7 +243,7 @@ impl HadesAudioRouterBridge {
         let cap_client = self
             ._capture_audio_client
             .as_ref()
-            .ok_or(HadesError::LoopbackBridgeCaptureAudioClientNotInitialized)?;
+            .ok_or(HadesError::AudoRouterBridgeCaptureAudioClientNotInitialized)?;
 
         cap_client.stop_stream()?;
         rend_client.stop_stream()?;

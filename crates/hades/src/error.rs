@@ -27,23 +27,26 @@ pub enum HadesError {
     #[error("Audio device not found by provided full/partial friendly name: {0}")]
     DeviceNotFoundByFriendlyName(String),
 
-    #[error("Loopback Bridge Capture AudioClient was not initialized")]
-    LoopbackBridgeCaptureAudioClientNotInitialized,
+    #[error("Win32 COM Object for WASAPI was not initialized.")]
+    Win32COMWASAPINotInitialized,
 
-    #[error("Loopback Bridge Capture AudioCaptureClient was not initialized")]
-    LoopbackBridgeCaptureAudioCaptureClientNotInitialized,
+    #[error("Audio Router Bridge Capture AudioClient was not initialized")]
+    AudoRouterBridgeCaptureAudioClientNotInitialized,
 
-    #[error("Loopback Bridge Render AudioClient was not initialized")]
-    LoopbackBridgeRenderAudioClientNotInitialized,
+    #[error("Audio Router Bridge Capture AudioCaptureClient was not initialized")]
+    AudioRouterBridgeCaptureAudioCaptureClientNotInitialized,
 
-    #[error("Loopback Bridge Render AudioRenderClient was not initialized")]
-    LoopbackBridgeRenderAudioRenderClientNotInitialized,
+    #[error("Audio Router Bridge Render AudioClient was not initialized")]
+    AudioRouterBridgeRenderAudioClientNotInitialized,
 
-    #[error("Loopback Bridge Capture Ring Buffer was not initialized")]
-    LoopbackBridgeCaptureRingBufferNotInitialized,
+    #[error("Audio Router Bridge Render AudioRenderClient was not initialized")]
+    AudioRouterBridgeRenderAudioRenderClientNotInitialized,
 
-    #[error("Loopback Bridge Render Ring Buffer was not initialized")]
-    LoopbackBridgeRenderRingBufferNotInitialized,
+    #[error("Audio Router Bridge Capture Ring Buffer was not initialized")]
+    AudioRouterBridgeCaptureRingBufferNotInitialized,
+
+    #[error("Audio Router Bridge Render Ring Buffer was not initialized")]
+    AudioRouterBridgeRenderRingBufferNotInitialized,
 
     #[error("Unsupported bit format for passed wave format bits: {0}")]
     UnsupportedWaveFormatBitFormat(String),

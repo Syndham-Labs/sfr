@@ -5,7 +5,6 @@ use std::{
 
 use crossbeam_channel::{Sender, unbounded};
 use wasapi::initialize_mta;
-use windows_result::HRESULT;
 
 use crate::{
     audio::dsp::{HadesAudioDSPCommands, HadesAudioDigitalSignalProcessingPipeline},
@@ -56,6 +55,10 @@ impl HadesEngine {
     }
 
     pub fn start_router(&mut self) -> Result<(), HadesError> {
+        if !self._wasapi_com_mta_init {
+            return Err(HadesError::Win32COMWASAPINotInitialized);
+        }
+
         log_info!("Attempting to start router...");
 
         self.router_running
