@@ -15,6 +15,9 @@ pub enum HadesError {
     #[error("Ring Buffer Chunk Error: {0}")]
     RingBufferChunkError(#[from] ChunkError),
 
+    #[error("Win32 API Error {0}: {0}")]
+    Win32APIError(i32, String),
+
     #[error("Crossbeam Channel Send Error: {0}")]
     CrossbeamChannelSendError(String),
 

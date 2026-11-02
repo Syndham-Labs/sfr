@@ -7,8 +7,9 @@ workspace = "../.."
 [dependencies]
 rtrb = "0.4.1"
 wasapi = "0.26.0"
-log = "0.4.34"
+log = "0.4.35"
 bytemuck = "1.25.2"
+windows-result = "0.100.0"
 
 thiserror = { workspace = true }
 crossbeam-channel = { workspace = true }

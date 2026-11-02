@@ -4,6 +4,8 @@ use std::{
 };
 
 use crossbeam_channel::{Sender, unbounded};
+use wasapi::initialize_mta;
+use windows_result::HRESULT;
 
 use crate::{
     audio::dsp::{HadesAudioDSPCommands, HadesAudioDigitalSignalProcessingPipeline},
@@ -22,6 +24,7 @@ pub struct HadesEngine {
 
     _dsp_command_tx: Option<Sender<HadesAudioDSPCommands>>,
     _router_handle: Option<JoinHandle<()>>,
+    _wasapi_com_mta_init: bool,
 }
 
 impl HadesEngine {
@@ -38,7 +41,18 @@ impl HadesEngine {
 
             _dsp_command_tx: None,
             _router_handle: None,
+            _wasapi_com_mta_init: false,
         }
+    }
+
+    pub fn initialize(&mut self) -> Result<(), HadesError> {
+        let result = initialize_mta();
+
+        if result.is_err() {
+            return Err(HadesError::Win32APIError(result.0, result.message()));
+        }
+
+        Ok(())
     }
 
     pub fn start_router(&mut self) -> Result<(), HadesError> {
@@ -109,7 +123,6 @@ impl HadesEngine {
 
     pub fn commit_filter_changes(&self) -> Result<(), HadesError> {
         let cloned = self.dsp.get_filters_cloned();
-        let len = cloned.len();
 
         if let Some(tx) = self._dsp_command_tx.as_ref() {
             tx.try_send(HadesAudioDSPCommands::UpdateFilters(cloned))
@@ -117,8 +130,6 @@ impl HadesEngine {
         } else {
             return Err(HadesError::AudioDSPCommandChannelNotInitialized);
         }
-
-        log_info!("Commited {} filters to DSP shadow copy.", len);
 
         Ok(())
     }
