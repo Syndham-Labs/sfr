@@ -24,7 +24,7 @@ impl HadesAudioRouterBridge {
         capture_device: HadesAudioDevice,
         render_device: HadesAudioDevice,
     ) -> Result<Self, HadesError> {
-        if capture_device.get_direction() == Direction::Render {
+        if capture_device.get_wasapi_direction() == Direction::Render {
             log_info!(
                 "Capture device passed is a Render Endpoint, router will request that capture device is initialized in loopback mode"
             );

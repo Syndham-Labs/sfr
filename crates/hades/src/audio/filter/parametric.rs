@@ -5,7 +5,7 @@ use crate::audio::filter::{
 
 pub mod biquad;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct ParametricEqualizationFilter {
     pub id: u32,
     pub filters: Vec<BiquadFilter>,

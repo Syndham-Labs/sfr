@@ -1,3 +1,5 @@
+use std::iter::Enumerate;
+
 use wasapi::DeviceEnumerator;
 
 use crate::{device::HadesAudioDevice, error::HadesError};
@@ -39,6 +41,19 @@ impl HadesAudioDeviceUtils {
         }
 
         Err(HadesError::DeviceNotFoundByFriendlyName(substring))
+    }
+
+    pub fn get_default_render_device() -> Result<HadesAudioDevice, HadesError> {
+        let enumerator = DeviceEnumerator::new()?;
+        let device = enumerator.get_default_device(&wasapi::Direction::Render)?;
+
+        Ok(HadesAudioDevice::from_wasapi_device(device)?)
+    }
+    pub fn get_default_capture_device() -> Result<HadesAudioDevice, HadesError> {
+        let enumerator = DeviceEnumerator::new()?;
+        let device = enumerator.get_default_device(&wasapi::Direction::Capture)?;
+
+        Ok(HadesAudioDevice::from_wasapi_device(device)?)
     }
 
     pub fn get_device_sample_rate(device: &HadesAudioDevice) -> Result<usize, HadesError> {

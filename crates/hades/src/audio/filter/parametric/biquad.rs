@@ -39,7 +39,7 @@ pub enum BiquadPan {
     Centre,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd)]
 pub struct BiquadState {
     x1: f32,
     x2: f32,
@@ -49,7 +49,7 @@ pub struct BiquadState {
     s2: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct BiquadFilter {
     pub id: u32,
     pub gain: f32,

@@ -8,7 +8,10 @@ use eframe::{
     egui::{self, FontData, FontDefinitions, FontFamily, FontTweak, ViewportCommand},
 };
 
-use crate::app::{SettingsWindow, UITopbar};
+use crate::{
+    app::{SettingsWindow, UITopbar},
+    engine::HadesEngineController,
+};
 
 // * App State and UI Definitions
 
@@ -20,11 +23,20 @@ pub trait UIComponentMut {
 }
 
 pub struct SFRAppState {
+    pub engine_controller: Arc<HadesEngineController>,
     pub show_settings_window: AtomicBool,
     pub error_message: RwLock<Option<Arc<String>>>,
 }
 
 impl SFRAppState {
+    pub fn new(engine_controller: Arc<HadesEngineController>) -> Self {
+        SFRAppState {
+            engine_controller,
+            show_settings_window: AtomicBool::new(false),
+            error_message: RwLock::new(None),
+        }
+    }
+
     pub fn is_open_settings_window(&self) -> bool {
         self.show_settings_window.load(Ordering::Relaxed)
     }
@@ -34,19 +46,10 @@ impl SFRAppState {
     }
 }
 
-impl Default for SFRAppState {
-    fn default() -> Self {
-        Self {
-            show_settings_window: AtomicBool::new(false),
-            error_message: RwLock::new(None),
-        }
-    }
-}
-
 pub static GLOBAL_APP_STATE: OnceLock<Arc<SFRAppState>> = OnceLock::new();
 
 pub fn global_state() -> &'static Arc<SFRAppState> {
-    GLOBAL_APP_STATE.get_or_init(|| Arc::new(SFRAppState::default()))
+    GLOBAL_APP_STATE.get().expect("APP STATE NOT INITIALIZED")
 }
 
 // * Root App Component

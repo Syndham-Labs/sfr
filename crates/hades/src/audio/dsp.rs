@@ -1,5 +1,6 @@
 use crate::audio::filter::{AudioFilter, AudioFilterOps, AudioFilterSync};
 
+#[derive(Debug, Clone)]
 pub enum HadesAudioDSPCommands {
     UpdateFilters(Vec<AudioFilter>),
     SetEnabled(bool),

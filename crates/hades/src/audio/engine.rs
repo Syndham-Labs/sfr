@@ -3,7 +3,7 @@ use std::{
     thread::{JoinHandle, spawn},
 };
 
-use crossbeam_channel::{Sender, unbounded};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use wasapi::initialize_mta;
 
 use crate::{
@@ -11,19 +11,28 @@ use crate::{
     device::HadesAudioDevice,
     error::HadesError,
     log_err, log_info,
-    wasapi::router::HadesAudioRouterBridge,
+    wasapi::{router::HadesAudioRouterBridge, utils::HadesAudioDeviceUtils},
 };
+
+#[derive(Debug)]
+pub enum HadesEngineStatus {
+    Starting,
+    Stopped,
+    Running,
+    Failed(HadesError),
+}
 
 pub struct HadesEngine {
     pub capture_device: HadesAudioDevice,
     pub render_device: HadesAudioDevice,
 
     pub dsp: HadesAudioDigitalSignalProcessingPipeline,
-    pub router_running: Arc<AtomicBool>,
 
+    _router_running: Arc<AtomicBool>,
     _dsp_command_tx: Option<Sender<HadesAudioDSPCommands>>,
     _router_handle: Option<JoinHandle<()>>,
     _wasapi_com_mta_init: bool,
+    _status_sender: Sender<HadesEngineStatus>,
 }
 
 impl HadesEngine {
@@ -31,16 +40,18 @@ impl HadesEngine {
         capture_device: HadesAudioDevice,
         render_device: HadesAudioDevice,
         dsp: HadesAudioDigitalSignalProcessingPipeline,
+        sender: Sender<HadesEngineStatus>,
     ) -> Self {
         Self {
             capture_device,
             render_device,
             dsp,
-            router_running: Arc::new(AtomicBool::new(false)),
+            _router_running: Arc::new(AtomicBool::new(false)),
 
             _dsp_command_tx: None,
             _router_handle: None,
             _wasapi_com_mta_init: false,
+            _status_sender: sender,
         }
     }
 
@@ -54,6 +65,11 @@ impl HadesEngine {
         Ok(())
     }
 
+    pub fn get_router_status(&self) -> bool {
+        self._router_running
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
     pub fn start_router(&mut self) -> Result<(), HadesError> {
         if !self._wasapi_com_mta_init {
             return Err(HadesError::Win32COMWASAPINotInitialized);
@@ -61,10 +77,11 @@ impl HadesEngine {
 
         log_info!("Attempting to start router...");
 
-        self.router_running
-            .store(true, std::sync::atomic::Ordering::Release);
+        self._status_sender
+            .try_send(HadesEngineStatus::Starting)
+            .map_err(|e| HadesError::CrossbeamChannelSendError(e.to_string()))?;
 
-        let worker_running = Arc::clone(&self.router_running);
+        let worker_running = Arc::clone(&self._router_running);
         let worker_capture = self.capture_device.clone();
         let worker_render = self.render_device.clone();
 
@@ -106,22 +123,32 @@ impl HadesEngine {
         });
 
         log_info!("Router started.");
+        self._router_running
+            .store(true, std::sync::atomic::Ordering::Release);
         self._router_handle = Some(handle);
+        self._status_sender
+            .try_send(HadesEngineStatus::Running)
+            .map_err(|e| HadesError::CrossbeamChannelSendError(e.to_string()))?;
 
         Ok(())
     }
 
-    pub fn stop_router(&mut self) {
+    pub fn stop_router(&mut self) -> Result<(), HadesError> {
         log_info!("Attempting to stop router...");
-
-        self.router_running
-            .store(false, std::sync::atomic::Ordering::SeqCst);
 
         if let Some(h) = self._router_handle.take() {
             let _ = h.join();
         }
 
+        self._router_running
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        self._status_sender
+            .try_send(HadesEngineStatus::Stopped)
+            .map_err(|e| HadesError::CrossbeamChannelSendError(e.to_string()))?;
+
         log_info!("Router stopped.");
+
+        Ok(())
     }
 
     pub fn commit_filter_changes(&self) -> Result<(), HadesError> {
@@ -145,6 +172,43 @@ impl HadesEngine {
         } else {
             return Err(HadesError::AudioDSPCommandChannelNotInitialized);
         }
+
+        Ok(())
+    }
+
+    pub fn change_device(
+        &mut self,
+        new_capture: Option<HadesAudioDevice>,
+        new_render: Option<HadesAudioDevice>,
+    ) -> Result<(), HadesError> {
+        let capture_to_set = match new_capture {
+            Some(d) => d,
+            None => self.capture_device.clone(),
+        };
+        let render_to_set = match new_render {
+            Some(d) => d,
+            None => self.render_device.clone(),
+        };
+
+        if self.get_router_status() {
+            self.stop_router()?;
+        }
+
+        let sr = HadesAudioDeviceUtils::get_device_sample_rate(&capture_to_set)?;
+        let nchannels = HadesAudioDeviceUtils::get_device_nchannels(&capture_to_set)?;
+
+        let dsp = HadesAudioDigitalSignalProcessingPipeline::new(
+            Some(self.dsp.filters.clone()),
+            sr,
+            nchannels,
+        );
+
+        self.dsp = dsp;
+        self.capture_device = capture_to_set;
+        self.render_device = render_to_set;
+
+        self.start_router()?;
+        self.commit_filter_changes()?;
 
         Ok(())
     }
