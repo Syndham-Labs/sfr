@@ -6,9 +6,6 @@ use crate::{
     engine::HadesEngineController,
 };
 use eframe::{self, egui::ViewportBuilder, run_native};
-use hades::{
-    HadesAudioDigitalSignalProcessingPipeline, HadesEngine, wasapi::utils::HadesAudioDeviceUtils,
-};
 
 pub mod app;
 pub mod asyncrt;
@@ -18,15 +15,11 @@ pub mod types;
 fn main() -> eframe::Result<(), String> {
     TokioMultiThreadRuntime::configure().map_err(|e| e.to_string())?;
 
-    let device = HadesAudioDeviceUtils::get_default_render_device().map_err(|e| e.to_string())?;
-    let sr = HadesAudioDeviceUtils::get_device_sample_rate(&device).map_err(|e| e.to_string())?;
-    let nchannels =
-        HadesAudioDeviceUtils::get_device_nchannels(&device).map_err(|e| e.to_string())?;
+    let (mut controller, status_sender, command_receiver, status_receiver) =
+        HadesEngineController::new();
 
-    let dsp = HadesAudioDigitalSignalProcessingPipeline::new(None, sr, nchannels);
-    let (controller, status_sender) = HadesEngineController::new();
-
-    let engine = HadesEngine::new(device.clone(), device, dsp, status_sender);
+    controller.watch_for_status_change(status_receiver);
+    controller.initialize_engine_and_watchdog(command_receiver, status_sender);
 
     GLOBAL_APP_STATE
         .set(Arc::new(SFRAppState::new(Arc::new(controller))))

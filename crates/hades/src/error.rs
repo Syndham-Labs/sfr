@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io::Error};
+use std::io::Error;
 
 use rtrb::chunks::ChunkError;
 use thiserror::Error;
@@ -15,7 +15,7 @@ pub enum HadesError {
     #[error("Ring Buffer Chunk Error: {0}")]
     RingBufferChunkError(#[from] ChunkError),
 
-    #[error("Win32 API Error {0}: {0}")]
+    #[error("Win32 API Error {0}: {1}")]
     Win32APIError(i32, String),
 
     #[error("Crossbeam Channel Send Error: {0}")]

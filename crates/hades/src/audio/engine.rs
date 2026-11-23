@@ -1,25 +1,46 @@
 use std::{
+    fmt::{Display, write},
     sync::{Arc, atomic::AtomicBool},
     thread::{JoinHandle, spawn},
 };
 
-use crossbeam_channel::{Receiver, Sender, unbounded};
+use crossbeam_channel::{Sender, unbounded};
 use wasapi::initialize_mta;
 
 use crate::{
-    audio::dsp::{HadesAudioDSPCommands, HadesAudioDigitalSignalProcessingPipeline},
+    HadesEngineStatus::{Failed, Running, Starting, Unknown},
+    audio::{
+        dsp::{HadesAudioDSPCommands, HadesAudioDigitalSignalProcessingPipeline},
+        filter::{
+            AudioFilter,
+            parametric::{ParametricEqualizationFilter, ParametricFilterUpdate},
+        },
+    },
     device::HadesAudioDevice,
     error::HadesError,
     log_err, log_info,
     wasapi::{router::HadesAudioRouterBridge, utils::HadesAudioDeviceUtils},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HadesEngineStatus {
     Starting,
     Stopped,
     Running,
-    Failed(HadesError),
+    Failed(String),
+    Unknown,
+}
+
+impl Display for HadesEngineStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HadesEngineStatus::Starting => write!(f, "Starting"),
+            HadesEngineStatus::Stopped => write!(f, "Stopped"),
+            HadesEngineStatus::Running => write!(f, "Running"),
+            HadesEngineStatus::Failed(_) => write!(f, "Failed"),
+            HadesEngineStatus::Unknown => write!(f, "Unknown"),
+        }
+    }
 }
 
 pub struct HadesEngine {
@@ -55,7 +76,7 @@ impl HadesEngine {
         }
     }
 
-    pub fn initialize(&mut self) -> Result<(), HadesError> {
+    pub fn initialize() -> Result<(), HadesError> {
         let result = initialize_mta();
 
         if result.is_err() {
@@ -162,6 +183,33 @@ impl HadesEngine {
         }
 
         Ok(())
+    }
+
+    pub fn add_parametric_filter(
+        &mut self,
+        filter: ParametricEqualizationFilter,
+    ) -> Result<(), HadesError> {
+        self.dsp
+            .add_filter(AudioFilter::ParametricEqualizer(filter));
+        self.commit_filter_changes()
+    }
+
+    pub fn remove_filter(&mut self, id: u32) -> Result<(), HadesError> {
+        if self.dsp.remove_filter(id) {
+            self.commit_filter_changes()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn update_biquad(
+        &mut self,
+        parametric_id: u32,
+        biquad_id: u32,
+        update: ParametricFilterUpdate,
+    ) -> Result<(), HadesError> {
+        self.dsp.update_biquad(parametric_id, biquad_id, update);
+        self.commit_filter_changes()
     }
 
     pub fn set_dsp_enabled_state(&mut self, new: bool) -> Result<(), HadesError> {

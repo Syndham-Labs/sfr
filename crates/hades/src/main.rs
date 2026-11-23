@@ -1,15 +1,13 @@
 use std::io::stdin;
 
+use crossbeam_channel::unbounded;
 use hades::{
     audio::{
         dsp::HadesAudioDigitalSignalProcessingPipeline,
         engine::HadesEngine,
-        filter::{
-            AudioFilter::ParametricEqualizer,
-            parametric::{
-                ParametricEqualizationFilter,
-                biquad::{BiquadMode, BiquadPan, BiquadType},
-            },
+        filter::parametric::{
+            ParametricEqualizationFilter,
+            biquad::{BiquadMode, BiquadPan, BiquadType},
         },
     },
     error::HadesError,
@@ -40,38 +38,28 @@ fn loopback_test() -> Result<(), HadesError> {
     let cap_sr = HadesAudioDeviceUtils::get_device_sample_rate(&capture_device)?;
     let cap_nchannels = HadesAudioDeviceUtils::get_device_nchannels(&capture_device)?;
 
+    let (status_sender, _) = unbounded();
     let mut engine = HadesEngine::new(
         capture_device,
         render_device,
         HadesAudioDigitalSignalProcessingPipeline::new(None, cap_sr, cap_nchannels),
+        status_sender,
     );
 
     engine.start_router()?;
-    engine.commit_filter_changes()?;
 
-    engine
-        .dsp
-        .add_filter(ParametricEqualizer(ParametricEqualizationFilter::new(
-            244,
-            None,
-            cap_nchannels,
-            true,
-        )));
-    engine.dsp.update_filter(244, |f, sr| match f {
-        ParametricEqualizer(pef) => {
-            pef.new_raw_biquad_filter(
-                4.5,
-                30,
-                0.4,
-                BiquadType::FlatTopBell,
-                BiquadPan::Centre,
-                BiquadMode::TransposedDirectFormII,
-                sr,
-                true,
-            );
-        }
-    });
-    engine.commit_filter_changes()?;
+    let mut parametric_filter = ParametricEqualizationFilter::new(244, None, cap_nchannels, true);
+    parametric_filter.new_raw_biquad_filter(
+        4.5,
+        30,
+        0.4,
+        BiquadType::FlatTopBell,
+        BiquadPan::Centre,
+        BiquadMode::TransposedDirectFormII,
+        cap_sr,
+        true,
+    );
+    engine.add_parametric_filter(parametric_filter)?;
 
     let mut input = String::new();
 
@@ -79,7 +67,7 @@ fn loopback_test() -> Result<(), HadesError> {
 
     println!("Input received, stopping bridge...");
 
-    engine.stop_router();
+    engine.stop_router()?;
 
     Ok(())
 }

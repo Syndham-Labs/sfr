@@ -5,6 +5,16 @@ use crate::audio::filter::{
 
 pub mod biquad;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParametricFilterUpdate {
+    Gain(f32),
+    Frequency(u32),
+    Q(f32),
+    Band(BiquadType),
+    Mode(BiquadMode),
+    Enabled(bool),
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct ParametricEqualizationFilter {
     pub id: u32,
@@ -93,9 +103,16 @@ impl ParametricEqualizationFilter {
         }
     }
 
-    pub fn update_filter(&mut self, id: u32, update_callback: impl FnOnce(&BiquadFilter)) -> bool {
-        if let Some(filter) = self.filters.iter().find(|f| f.id == id) {
-            update_callback(filter);
+    pub fn update_biquad(&mut self, id: u32, update: ParametricFilterUpdate) -> bool {
+        if let Some(filter) = self.filters.iter_mut().find(|f| f.id == id) {
+            match update {
+                ParametricFilterUpdate::Gain(value) => filter.set_gain(value),
+                ParametricFilterUpdate::Frequency(value) => filter.set_freq(value),
+                ParametricFilterUpdate::Q(value) => filter.set_q(value),
+                ParametricFilterUpdate::Band(value) => filter.set_band(value),
+                ParametricFilterUpdate::Mode(value) => filter.set_mode(value),
+                ParametricFilterUpdate::Enabled(value) => filter.set_enabled(value),
+            }
             true
         } else {
             false

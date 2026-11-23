@@ -1,4 +1,6 @@
-use crate::audio::filter::{AudioFilter, AudioFilterOps, AudioFilterSync};
+use crate::audio::filter::{
+    AudioFilter, AudioFilterOps, AudioFilterSync, parametric::ParametricFilterUpdate,
+};
 
 #[derive(Debug, Clone)]
 pub enum HadesAudioDSPCommands {
@@ -57,14 +59,18 @@ impl HadesAudioDigitalSignalProcessingPipeline {
         }
     }
 
-    pub fn update_filter(
+    pub fn update_biquad(
         &mut self,
-        id: u32,
-        update_callback: impl FnOnce(&mut AudioFilter, usize),
+        parametric_id: u32,
+        biquad_id: u32,
+        update: ParametricFilterUpdate,
     ) -> bool {
-        if let Some(filter) = self.filters.iter_mut().find(|f| (*f).get_id() == id) {
-            update_callback(filter, self.sample_rate);
-            true
+        if let Some(AudioFilter::ParametricEqualizer(filter)) = self
+            .filters
+            .iter_mut()
+            .find(|filter| filter.get_id() == parametric_id)
+        {
+            filter.update_biquad(biquad_id, update)
         } else {
             false
         }
